@@ -1,4 +1,4 @@
-use soroban_sdk::String;
+use soroban_sdk::{symbol_short, testutils::Events, IntoVal, String};
 use crate::test::CometAggregatorAdapterTest;
 use adapter_interface::AdapterError;
 use super::comet_adapter_contract::AdapterError as AdapterErrorDeployer;
@@ -72,4 +72,20 @@ fn test_get_protocol_address_not_initialized() {
 
     let result = test.adapter_contract_not_initialized.try_get_protocol_address();
     assert_eq!(result,Err(Ok(AdapterError::NotInitialized)));
+}
+
+#[test]
+fn test_initialize_event_uses_comet_namespace() {
+    let test = CometAggregatorAdapterTest::setup();
+
+    test.adapter_contract_not_initialized.initialize(
+        &String::from_str(&test.env, "comet"),
+        &test.comet_contract.address,
+    );
+
+    let event = test.env.events().all().last().unwrap();
+    assert_eq!(
+        event.1,
+        ("SoroswapAggregatorCometAdapter", symbol_short!("init")).into_val(&test.env)
+    );
 }
