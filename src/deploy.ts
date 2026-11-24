@@ -19,7 +19,9 @@ export async function deployAdaptersAndAggregator(addressBook: AddressBook) {
   const phoenixMultihop = network === 'mainnet'
     ? phoenixAddressBook.getContractId('phoenix_multihop')
     : addressBook.getContractId('phoenix_multihop');
-  const cometPool = addressBook.getContractId('comet_pair');
+  const cometPool = addressBook.hasContractId('comet_pair')
+    ? addressBook.getContractId('comet_pair')
+    : undefined;
 
   console.log('-------------------------------------------------------');
   console.log('Deploying Aggregator');
@@ -31,8 +33,13 @@ export async function deployAdaptersAndAggregator(addressBook: AddressBook) {
     { protocol_id: 0, router: soroswapRouter, paused: false },
     { protocol_id: 1, router: phoenixMultihop, paused: false },
     { protocol_id: 2, router: aquaRouter, paused: false },
-    { protocol_id: 3, router: cometPool, paused: false },
   ];
+
+  if (cometPool) {
+    adapters.push({ protocol_id: 3, router: cometPool, paused: false });
+  } else {
+    console.log('Skipping Comet adapter: no comet_pair in the address book');
+  }
 
   const initAggregatorArgs: xdr.ScVal[] = [
     new Address(loadedConfig.admin.publicKey()).toScVal(),

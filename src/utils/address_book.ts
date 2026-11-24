@@ -87,6 +87,10 @@ export class AddressBook {
     }
   }
 
+  hasContractId(contractKey: string): boolean {
+    return this.ids.has(contractKey);
+  }
+
   /**
    * Set the hex encoded contractId for a given contractKey
    * @param contractKey - The name of the contract
