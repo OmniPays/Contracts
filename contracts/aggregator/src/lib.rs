@@ -79,6 +79,9 @@ fn calculate_distribution_amounts_and_check_paths(
     let mut swap_amounts = soroban_sdk::Vec::new(env);
 
     for (index, dist) in distribution.iter().enumerate() {
+        if dist.path.len() < 2 {
+            return Err(AggregatorError::WrongMinimumPathLength);
+        }
         // Check that all paths start with same token
         if dist.path.get(0) != Some(token_in.clone()) {
             return Err(AggregatorError::InvalidPath);

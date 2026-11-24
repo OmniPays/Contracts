@@ -481,6 +481,37 @@ fn swap_exact_tokens_for_tokens_malformed_path_wrong_end() {
 }
 
 #[test]
+fn swap_exact_tokens_for_tokens_malformed_path_too_short() {
+    let test = SoroswapAggregatorTest::setup();
+    let deadline: u64 = test.env.ledger().timestamp() + 1000;
+
+    let mut distribution_vec = Vec::new(&test.env);
+    let path: Vec<Address> = vec![&test.env, test.token_0.address.clone()];
+
+    let distribution_0 = DexDistribution {
+        protocol_id: Protocol::Soroswap,
+        path,
+        parts: 1,
+        bytes: None,
+    };
+    distribution_vec.push_back(distribution_0);
+
+    let result = test.aggregator_contract.try_swap_exact_tokens_for_tokens(
+        &test.token_0.address.clone(),
+        &test.token_1.address.clone(),
+        &1_000_000,
+        &0,
+        &distribution_vec,
+        &test.user.clone(),
+        &deadline,
+    );
+    assert_eq!(
+        result,
+        Err(Ok(AggregatorErrorFromCrate::WrongMinimumPathLength))
+    );
+}
+
+#[test]
 fn swap_exact_tokens_for_tokens_insufficient_output_amount() {
     let test = SoroswapAggregatorTest::setup();
     let deadline: u64 = test.env.ledger().timestamp() + 1000;

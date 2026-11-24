@@ -10,7 +10,11 @@ soroban_sdk::contractimport!(
 );
 pub type PhoenixMultihopClient<'a> = Client<'a>;
 
-fn convert_to_swaps(e: &Env, path: &Vec<Address>) -> Vec<Swap> {
+fn convert_to_swaps(e: &Env, path: &Vec<Address>) -> Result<Vec<Swap>, AggregatorError> {
+    if path.len() < 2 {
+        return Err(AggregatorError::WrongMinimumPathLength);
+    }
+
     let mut swaps = Vec::new(e);
 
     // Iterate through the addresses in the path, creating a Swap object for each pair
@@ -42,7 +46,7 @@ fn convert_to_swaps(e: &Env, path: &Vec<Address>) -> Vec<Swap> {
         });
     }
 
-    swaps
+    Ok(swaps)
 }
 
 pub fn protocol_swap_exact_tokens_for_tokens(
@@ -56,7 +60,7 @@ pub fn protocol_swap_exact_tokens_for_tokens(
 ) -> Result<Vec<i128>, AggregatorError> {
 
     let phoenix_multihop_client = PhoenixMultihopClient::new(&e, &phoenix_multihop_address);
-    let operations = convert_to_swaps(e, path);
+    let operations = convert_to_swaps(e, path)?;
     
     // TODO: Remove this checks if we want to reduce the number of total instructions
     // TODO: Do benchmarking
@@ -119,7 +123,7 @@ pub fn protocol_swap_tokens_for_exact_tokens(
 ) -> Result<Vec<i128>, AggregatorError> {
 
     let phoenix_multihop_client = PhoenixMultihopClient::new(&e, &phoenix_multihop_address);
-    let operations = convert_to_swaps(e, path);
+    let operations = convert_to_swaps(e, path)?;
 
     // let pool_type = PoolType::Xyk; // currently we only support XYK pools
 
@@ -200,4 +204,22 @@ pub fn protocol_swap_tokens_for_exact_tokens(
     swap_amounts.push_back(*amount_out);
 
     Ok(swap_amounts)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use soroban_sdk::testutils::Address as _;
+    use soroban_sdk::vec;
+
+    #[test]
+    fn convert_to_swaps_rejects_single_token_path() {
+        let e = Env::default();
+        let path: Vec<Address> = vec![&e, Address::generate(&e)];
+
+        assert_eq!(
+            convert_to_swaps(&e, &path).err(),
+            Some(AggregatorError::WrongMinimumPathLength)
+        );
+    }
 }
