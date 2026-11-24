@@ -95,12 +95,6 @@ export async function createTxBuilder(source: Keypair): Promise<TransactionBuild
   }
 }
 
-export const getCurrentTimePlusOneHour = () => {
-  // Get the current time in milliseconds
-  const now = Date.now();
-
-  // Add one hour (3600000 milliseconds)
-  const oneHourLater = now + 3600000;
-
-  return oneHourLater;
+export const getCurrentTimePlusOneHour = (): bigint => {
+  return BigInt(Math.floor(Date.now() / 1000) + 3600);
 };
