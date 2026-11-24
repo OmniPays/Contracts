@@ -8,6 +8,10 @@ on:
 permissions:
   contents: read
 
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: '--check-cfg=cfg(feature,values("testutils")) -C target-feature=-reference-types,-multivalue,-sign-ext'
+
 jobs:
   typescript:
     name: TypeScript
@@ -32,7 +36,7 @@ jobs:
         working-directory: contracts
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@1.85.0
         with:
           targets: wasm32-unknown-unknown
       - name: Check workspace
