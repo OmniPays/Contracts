@@ -16,8 +16,16 @@ import {
 } from "./utils.js";
 import { AddressBook } from '../utils/address_book.js';
 import { config } from '../utils/env_config.js';
-import { Address, Asset, nativeToScVal, scValToNative, xdr } from "@stellar/stellar-sdk";
-import { AxiosClient } from "@stellar/stellar-sdk/rpc";
+import { Address, Asset, scValToNative, xdr } from "@stellar/stellar-sdk";
+
+const fetchSoroswapRouterAddress = async (): Promise<string> => {
+  const response = await fetch('https://api.soroswap.finance/api/testnet/router');
+  if (!response.ok) {
+    throw new Error(`Unable to fetch Soroswap router address: ${response.status}`);
+  }
+  return (await response.json() as { address: string }).address;
+};
+
 const args = process.argv;
 
 let network: string;
@@ -40,7 +48,7 @@ const loadedConfig = config(network);
 
 const  prepareTestEnvironment = async ()=>{
   const networkPassphrase = loadedConfig.passphrase;
-  const soroswapRouterAddress = await (await AxiosClient.get('https://api.soroswap.finance/api/testnet/router')).data.address;
+  const soroswapRouterAddress = await fetchSoroswapRouterAddress();
   console.log("-------------------------------------------------------");
   console.log("Creating new tokens");
   console.log("-------------------------------------------------------");
@@ -209,12 +217,12 @@ const swapExactInputAggregatorTest = async ()=>{
 
   const dexDistributionRaw = [
     {
-      protocol_id: "soroswap",
+      protocol_id: 0,
       path: [cID_A, cID_B],
       parts: 1,
     },
     {
-      protocol_id: "phoenix",
+      protocol_id: 1,
       path: [cID_A, cID_B],
       parts: 3,
     },
@@ -346,12 +354,12 @@ const swapExactOutputAggregatorTest = async ()=>{
 
   const dexDistributionRaw = [
     {
-      protocol_id: "soroswap",
+      protocol_id: 0,
       path: [cID_A, cID_B],
       parts: 1,
     },
     {
-      protocol_id: "phoenix",
+      protocol_id: 1,
       path: [cID_A, cID_B],
       parts: 3,
     },
@@ -458,7 +466,7 @@ const swapExactOutputAggregatorTest = async ()=>{
 
 const swap_exact_tokens_for_tokens_one_protocol_two_hops = async ()=>{
   const networkPassphrase = loadedConfig.passphrase;
-  const soroswapRouterAddress = await (await AxiosClient.get('https://api.soroswap.finance/api/testnet/router')).data.address;
+  const soroswapRouterAddress = await fetchSoroswapRouterAddress();
   console.log("-------------------------------------------------------");
   console.log("Creating new tokens");
   console.log("-------------------------------------------------------");
@@ -587,7 +595,7 @@ const swap_exact_tokens_for_tokens_one_protocol_two_hops = async ()=>{
 
   const dexDistributionRaw = [
     {
-      protocol_id: "soroswap",
+      protocol_id: 0,
       path: [cID_A, cID_B, cID_C],
       parts: 1,
     },
@@ -681,7 +689,6 @@ const swapExactInputAggregatorCometTest = async ()=>{
     soroswapPoolBalance, 
     cometPoolBalance,
     cometAddress,
-    cometAdapterName,
   } = await prepareTestEnvironment();
 
   console.log('-------------------------------------------------------');
@@ -695,12 +702,12 @@ const swapExactInputAggregatorCometTest = async ()=>{
 
   const dexDistributionRaw = [
     {
-      protocol_id: "soroswap",
+      protocol_id: 0,
       path: [cID_A, cID_B],
       parts: 1,
     },
     {
-      protocol_id: cometAdapterName,
+      protocol_id: 3,
       path: [cID_A, cID_B],
       parts: 1,
     },
@@ -824,7 +831,6 @@ const swapExactOutputAggregatorCometTest = async ()=>{
     soroswapPoolBalance, 
     cometPoolBalance,
     cometAddress,
-    cometAdapterName,
   } = await prepareTestEnvironment();
 
   console.log('-------------------------------------------------------');
@@ -838,12 +844,12 @@ const swapExactOutputAggregatorCometTest = async ()=>{
 
   const dexDistributionRaw = [
     {
-      protocol_id: "soroswap",
+      protocol_id: 0,
       path: [cID_A, cID_B],
       parts: 1,
     },
     {
-      protocol_id: cometAdapterName,
+      protocol_id: 3,
       path: [cID_A, cID_B],
       parts: 1,
     },

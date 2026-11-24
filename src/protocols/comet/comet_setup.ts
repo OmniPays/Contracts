@@ -36,7 +36,7 @@ export async function cometSetup(loadedConfig: any, addressBook: any) {
   //Creating Comet Pool
   const cometPairAddress = await createCometPool(addressBook, soroswapTokensBook,  network, loadedConfig);
   const initArgs = xdr.ScVal.scvVec([
-    xdr.ScVal.scvString('comet_blend'), // protocol_id as ScVal string
+    xdr.ScVal.scvString('comet'), // protocol_id as ScVal string
     new Address(cometPairAddress).toScVal(), // protocol_address as ScVal address
   ]);
 

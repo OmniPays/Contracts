@@ -25,7 +25,7 @@ export async function deployCometAdapter(addressBook: AddressBook) {
 
   const cometPairAddress = await createCometPool(addressBook, soroswapTokensBook,  network, loadedConfig);
     const initArgs = xdr.ScVal.scvVec([
-      xdr.ScVal.scvString('comet_blend'), // protocol_id as ScVal string
+      xdr.ScVal.scvString('comet'), // protocol_id as ScVal string
       new Address(cometPairAddress).toScVal(), // protocol_address as ScVal address
     ]);
   
@@ -46,9 +46,10 @@ export async function deployCometAdapter(addressBook: AddressBook) {
     const cometAdapterAddress = scValToNative(response.returnValue)[0];
     console.log('🚀 « cometAdapterAddress:', cometAdapterAddress);
     addressBook.setContractId('comet_adapter', cometAdapterAddress);
+    addressBook.setContractId('comet_pair', cometPairAddress);
 
   console.log("Updating adapters on aggregator.. adding Comet")
-  await updateAdapters(addressBook, [{protocol_id: 'comet_blend', address: new Address(cometAdapterAddress), paused: false}]);
+  await updateAdapters(addressBook, [{protocol_id: 3, router: cometPairAddress, paused: false}]);
 
 }
 

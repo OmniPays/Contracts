@@ -48,7 +48,7 @@ export async function deployAquaAdapter(addressBook: AddressBook) {
   addressBook.setContractId("aqua_adapter", aquaAdapterAddress)
 
   console.log("Updating adapters on aggregator.. adding Aqua")
-  await updateAdapters(addressBook, [{protocol_id: 'aqua', address: new Address(aquaAdapterAddress), paused: false}]);
+  await updateAdapters(addressBook, [{protocol_id: 2, router: aquaRouterAddress, paused: false}]);
 
 }
 

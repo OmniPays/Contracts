@@ -1,64 +1,54 @@
 import { Address, nativeToScVal, scValToNative, xdr } from '@stellar/stellar-sdk';
 import { randomBytes } from 'crypto';
-import { updateAdapters } from './update_protocols.js';
 import { AddressBook } from './utils/address_book.js';
 import { installContract, invokeContract } from './utils/contract.js';
 import { config } from './utils/env_config.js';
+import { updateAdapters } from './update_protocols.js';
 
 export async function deploySoroswapAdapter(addressBook: AddressBook) {
-  
-
   console.log('-------------------------------------------------------');
-  console.log('Deploying Adapter using the deployer');
+  console.log('Deploying Soroswap Adapter using the deployer');
   console.log('-------------------------------------------------------');
-  console.log("** Aqua Adapter");
-  await installContract('aqua_adapter', addressBook, loadedConfig.admin);
-  console.log('🚀 « aqua_adapter deployed');
+  await installContract('soroswap_adapter', addressBook, loadedConfig.admin);
 
-  
-  const aquaRouterAddress = aquaAddressBook.getContractId('aqua_router');
-
-  const aquaAdapterInitParams = xdr.ScVal.scvVec([
-    xdr.ScVal.scvString("aqua"), // protocol_id
-    new Address(aquaRouterAddress).toScVal(), // protocol_address 
+  const soroswapRouterAddress = soroswapAddressBook.getContractId('router');
+  const initArgs = xdr.ScVal.scvVec([
+    xdr.ScVal.scvString('soroswap'),
+    new Address(soroswapRouterAddress).toScVal(),
   ]);
-
-  const aquaAdapterDeployParams: xdr.ScVal[] = [
+  const deployParams: xdr.ScVal[] = [
     new Address(loadedConfig.admin.publicKey()).toScVal(),
-    nativeToScVal(Buffer.from(addressBook.getWasmHash("aqua_adapter"), "hex")),
+    nativeToScVal(Buffer.from(addressBook.getWasmHash('soroswap_adapter'), 'hex')),
     nativeToScVal(randomBytes(32)),
     xdr.ScVal.scvSymbol('initialize'),
-    aquaAdapterInitParams
-  ]
+    initArgs,
+  ];
 
   const response = await invokeContract(
     'deployer',
     addressBook,
     'deploy',
-    aquaAdapterDeployParams,
+    deployParams,
     loadedConfig.admin
   );
+  const adapterAddress = scValToNative(response.returnValue)[0];
+  console.log('🚀 « soroswapAdapterAddress:', adapterAddress);
+  addressBook.setContractId('soroswap_adapter', adapterAddress);
 
-  const aquaAdapterAddress = scValToNative(response.returnValue)[0]
-  console.log('🚀 « aquaAdapterAddress:', aquaAdapterAddress);
-  // SAVE ADDRES IN ADDRESS BOOK
-  addressBook.setContractId("aqua_adapter", aquaAdapterAddress)
-
-  console.log("Updating adapters on aggregator.. adding Aqua")
-  await updateAdapters(addressBook, [{protocol_id: 'aqua', address: new Address(aquaAdapterAddress), paused: false}]);
-
+  console.log('Updating adapters on aggregator.. adding Soroswap');
+  await updateAdapters(addressBook, [
+    { protocol_id: 0, router: soroswapRouterAddress, paused: false },
+  ]);
 }
 
 const network = process.argv[2];
-if(network != 'mainnet') throw new Error('Only Mainnet is Supported')
+if (network !== 'mainnet') throw new Error('Only Mainnet is Supported');
 
 const addressBook = AddressBook.loadFromFile(network);
-
-const aquaAddressBook = AddressBook.loadFromFile(
+const soroswapAddressBook = AddressBook.loadFromFile(
   network,
-  `../../protocols/aqua-addresses`
+  '../../protocols/soroswap/public'
 );
-
 const loadedConfig = config(network);
 
 await deploySoroswapAdapter(addressBook);

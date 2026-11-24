@@ -15,6 +15,7 @@ import type {
   Option,
 } from "@stellar/stellar-sdk/contract";
 import { deployStellarAsset } from "../utils/contract.js";
+import { adapterToScVal, dexDistributionToScVal, AdapterInput, DexDistributionInput } from "../utils/abi.js";
 import { getCurrentTimePlusOneHour, signWithKeypair } from "../utils/tx.js";
 import * as PhoenixFactoryContract from '../protocols/phoenix/bindgins/factory_bindings.js';
 import { AddressBook } from '../utils/address_book.js';
@@ -423,16 +424,6 @@ export interface CometPool {
   adapter_name: string,
 }
 
-function generateAdapterIdForComet() {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  let result = "";
-  for (let i = 0; i < 10; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return result;
-}
-
-
 export async function createCometPool(params: CometPoolParams): Promise<CometPool> {
     console.log('creating comet pair...');
     const createCometPairResponse = await invokeContract(
@@ -483,32 +474,15 @@ export async function createCometPool(params: CometPoolParams): Promise<CometPoo
     // SAVE ADDRES IN ADDRESS BOOK
     addressBook.setContractId('comet_adapter', cometAdapterAddress);
 
-    const adapter_name = generateAdapterIdForComet()
-
-    const adaptersVec = [
+    const adapters: AdapterInput[] = [
       {
-        protocol_id: adapter_name,
-        address: new Address(cometAdapterAddress),
+        protocol_id: 3,
+        router: cometPairAddress,
         paused: false
       }
     ];
 
-    const adaptersVecScVal = xdr.ScVal.scvVec(adaptersVec.map((adapter) => {
-      return xdr.ScVal.scvMap([
-        new xdr.ScMapEntry({
-          key: xdr.ScVal.scvSymbol('address'),
-          val: adapter.address.toScVal(),
-        }),
-        new xdr.ScMapEntry({
-          key: xdr.ScVal.scvSymbol('paused'),
-          val: nativeToScVal(adapter.paused),
-        }),
-        new xdr.ScMapEntry({
-          key: xdr.ScVal.scvSymbol('protocol_id'),
-          val: xdr.ScVal.scvString(adapter.protocol_id),
-        }),
-      ]);
-    }));
+    const adaptersVecScVal = xdr.ScVal.scvVec(adapters.map(adapterToScVal));
 
       const aggregatorUpdateAdaptersParams: xdr.ScVal[] = [
         adaptersVecScVal,
@@ -528,35 +502,12 @@ export async function createCometPool(params: CometPoolParams): Promise<CometPoo
       asset_0_balance: params.amount_a,
       asset_1: params.asset_b,
       asset_1_balance: params.amount_b,
-      adapter_name
+      adapter_name: 'comet'
     }
 }
 
-interface DexDistributionRaw {
-  protocol_id: string,
-  path: string[],
-  parts: number,
-}
-const createDexDistribution = async (dexDistributionRaw: DexDistributionRaw[]) => {
-  const dexDistributionScVal = dexDistributionRaw.map((distribution) => {
-    return xdr.ScVal.scvMap([
-      new xdr.ScMapEntry({
-        key: xdr.ScVal.scvSymbol('parts'),
-        val: nativeToScVal(distribution.parts, {type: "u32"}),
-      }),
-      new xdr.ScMapEntry({
-        key: xdr.ScVal.scvSymbol('path'),
-        val: xdr.ScVal.scvVec(distribution.path.map((pathAddress) => new Address(pathAddress).toScVal())),
-      }),
-      new xdr.ScMapEntry({
-        key: xdr.ScVal.scvSymbol('protocol_id'),
-        val: nativeToScVal(distribution.protocol_id),
-      }),
-    ]);
-  });
-
-  const dexDistributionScValVec = xdr.ScVal.scvVec(dexDistributionScVal);
-  return dexDistributionScValVec;
+const createDexDistribution = async (distributions: DexDistributionInput[]) => {
+  return xdr.ScVal.scvVec(distributions.map(dexDistributionToScVal));
 }
 
 export enum SwapMethod {

@@ -101,7 +101,7 @@ export async function cometSetup(loadedConfig: EnvConfig, addressBook: AddressBo
   await installContract('comet_adapter', addressBook, loadedConfig.admin);
 
   const initArgs = xdr.ScVal.scvVec([
-    xdr.ScVal.scvString('comet_blend'), // protocol_id as ScVal string
+    xdr.ScVal.scvString('comet'), // protocol_id as ScVal string
     new Address(cometPairAddress).toScVal(), // protocol_address as ScVal address
   ]);
 
