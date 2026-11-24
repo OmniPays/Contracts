@@ -1,229 +1,124 @@
-# Soroswap Aggregator 
+# OmniPays Contracts
 
-The Soroswap Aggregator aggregates liquidity from different Soroban based AMMs
+Soroban contracts for the OmniPays cross-DEX aggregator. The aggregator splits a swap across
+multiple liquidity venues according to a caller-supplied distribution and delegates each hop to a
+protocol-specific adapter.
 
-📚 Documentation: [Soroswap Documentation](https://docs.soroswap.finance/)
+## Architecture
 
-🔒 Audit Report: [Runtime Verification](./audits/2024-08-31_Soroswap_Aggregator_Audit_by_RuntimeVerification.pdf)
+- **`contracts/aggregator`** holds the adapter registry (`Adapter { protocol_id, router, paused }`),
+  validates swap parameters, splits amounts by `parts`, calls adapters, and checks aggregate input
+  and output limits. Its public enum is `Protocol { Soroswap = 0, Phoenix = 1, Aqua = 2, Comet = 3 }`.
+- **`contracts/adapters/*`** implement the shared `AdapterTrait` (`initialize`, both swap
+  directions, and read-only accessors). Each adapter translates the common swap call into the
+  target DEX's router or pool interface. `DexDistribution` carries `protocol_id`, `path`, `parts`,
+  and optional `bytes` (pool hashes for Aqua).
+- **`contracts/deployer`** installs WASM and deploys/initializes contracts deterministically.
+- **`contracts/test-utils`** provides shared Phoenix test fixtures for Rust tests.
+- **`src/`** contains the TypeScript deployment, configuration, and manual integration scripts.
 
-📑 Audit Summary: [Runtime Verification](./audits/2024-08-31_Soroswap_Aggregator_Audit_Summary_by_RuntimeVerification.pdf)
+## Supported protocols
 
-🌐 Deployed Address: [`./public/mainnet.json`](./public/mainnet.json)
+| ID | Protocol | Adapter | Underlying entry point | Published deployments |
+| --- | --- | --- | --- | --- |
+| 0 | Soroswap | `soroswap_adapter` | Soroswap router | Mainnet and testnet |
+| 1 | Phoenix | `phoenix_adapter` | Phoenix multihop | Mainnet and testnet |
+| 2 | Aqua | `aqua_adapter` | Aqua liquidity pool router | Mainnet |
+| 3 | Comet | `comet_adapter` | Comet pool | Not published in `public/` |
 
+Deadlines passed to the aggregator and to adapters are **Unix timestamps in seconds**, not
+milliseconds. The aggregator requires `deadline > ledger timestamp` and validates that every path
+has at least two tokens before dispatching swaps.
 
-# Setup and Deployment
+## Deployed contracts
 
-**For standalone development read #Development section**
+Source of truth: [`public/mainnet.contracts.json`](./public/mainnet.contracts.json) and
+[`public/testnet.contracts.json`](./public/testnet.contracts.json).
 
-> [!IMPORTANT] 
-> Be sure to clone the repository with its submodules to ensure proper execution of development, testing, and deploying scripts.
+| Contract | Mainnet | Testnet |
+| --- | --- | --- |
+| deployer | `CALUZAZZ6FHENZJBQLSTPBZBZOZMACRIHMAEGSCGJYRC35RA5ZDXTKP2` | `CBY6WKJ2V2PSBZG5RVRSGC2VCZFFVZKHCGYXBLJ2HEOZJNXJ3SI7TOZB` |
+| aggregator | `CAYP3UWLJM7ZPTUKL6R6BFGTRWLZ46LRKOXTERI2K6BIJAWGYY62TXTO` | `CC74XDT7UVLUZCELKBIYXFYIX6A6LGPWURJVUXGRPQO745RWX7WEURMA` |
+| soroswap_adapter | `CC6KQUATUBCIFZRDJL5X5PHCYGOHLPHKZQPUOTZTQTASGU5AUQ6DS7SC` | `CCFXCAP7GT7XFTKGPENDZFN6MZ5VMPFONUHH46VKVN7E75C7FWA7NQ66` |
+| phoenix_adapter | `CCEBUGFV3D73OMV7MUXXA43AREY53MUHVD5SMUM7YZODNGY4NZBA2TSC` | `CBQBQXFQAQ5BQH5RATLBVYE5OTRJFRFPC6WBQNPENI22UODKPL2BZZB5` |
+| aqua_adapter | `CDHDUKHFZB6FORHEBZCNYI3GGVNVOLEITSGI7OKU4UIQND5QG75KGSRR` | not published |
+| phoenix_multihop | not published | `CBAMPJTMNDXBBYYQ77C7WX2MTBR3XZHERDJ7NQMXLEZHMWUFQBQMFTOC` |
+| phoenix_factory | not published | `CB6JW45DDEPUDUQI63AVYXD6UB72HMBGDAW7MZDZKZZIKAB7HL4LTNWO` |
 
-## 1. Setup
-
-1.1. Clone this repo. Submodules are necesary to get the Public and Testnet addresses of the underlying protocols like Soroswap, Phoenix, Aqua, etc... or to deploy on Standalone and Testnet those protocols.
+## Setup
 
 ```bash
-git clone --recurse-submodules http://github.com/soroswap/aggregator.git
-```
-> [!TIP]
-> If you forgot to clone with the `--recurse-submodules` flag, you can run `git submodule update --init --recursive` to get the submodules.
-
-> [!NOTE]
-If there was a Testnet reset, and the soroswap/core repo has new Tesnet deployments for test tokens, you want to bring those changes
-```
-cd protocols/soroswap/
-git pull origin main
-```
-> [!NOTE]
-If you want to update the submodules, do
-```
-git pull --recurse-submodules
-```
-
-1.2 Copy the `.env.example` file into `.env` and modify the necessary parameters
-```bash
+git clone --recurse-submodules https://github.com/OmniPays/Contracts.git
+cd Contracts
 cp .env.example .env
 ```
-For the **secret keys**, you can create an account and private keys in https://laboratory.stellar.org/#account-creator?network=test.
-For `MAINNET_RPC_URL`, you will need to subscribe to one of the Stellar Mainnet RPC providers: https://app.validationcloud.io/, https://nownodes.io/ or others (ask in the Stellar Discord)
 
-1.2 In one terminal: (choose standalone, futurenet or testnet)
+Fill in the RPC URLs and secret keys in `.env` before running any deployment script. Submodules are
+only needed when rebuilding or redeploying the underlying DEX protocols.
 
-```bash
-bash scripts/quickstart.sh standalone # or futurenet or testnet
-```
+## Build and test
 
-1.3. In another terminal, to enter the docker container
+Rust contracts:
 
 ```bash
-bash scripts/run.sh
+cd contracts
+cargo build --target wasm32-unknown-unknown --release
+cargo test
+cargo fmt --all --check
 ```
 
-1.4 yarn install
+The repository's Soroban SDK version predates current Rust releases; use the toolchain pinned by
+the deployment environment if `cargo test` fails in a newer compiler.
+
+TypeScript tooling:
 
 ```bash
-yarn
+npm install
+npm run build
+npx tsc --noEmit
 ```
 
-2.- Build the Smart Contracts: after you have the enviroment setted up and inside the docker container you have to build the smart contracts with
+`./test` and `./test.sh` only run local Rust/TypeScript checks; they never deploy or contact a
+network. Live integration tests are manual and must be invoked explicitly with `npm run test:manual`.
 
-```bash 
-cd /workspace/contracts
-make build
-```
+## Deployment (manual)
 
-### (Optional) Upgrade, Compile other protocols and test
-If you are considering other protocol that have changed their versions, upgrade them.
-Make sure that you did a recursive pull
+`npm run deploy <network>` deploys the deployer, aggregator, and configured adapters. Supported
+network names are `mainnet`, `testnet`, `futurenet`, and `standalone`; RPC endpoints come from
+`configs.json` and `.env`. Adapter-specific scripts are available as
+`npm run deploy-{soroswap,phoenix,aqua,comet}-adapter mainnet`.
 
-However, you dont need to do this very often.
+Deployment and live integration scripts submit real transactions. Check the target network and
+funded accounts before running them; `yarn`/`npm` build scripts do not deploy on their own.
 
-For Phoenix:
-```
-cd protocols/phoenix-contracts/
-make build
-cp target/wasm32-unknown-unknown/release/*.wasm ../../contracts/adapters/phoenix/phoenix_contracts/
-
-# make sure the tests still pass
-cd /workspace/contracts/adapters/phoenix
-rustup install 1.79.0 # Phoenix needs to downgrade
-rustup override set 1.79.0
-rustup target add wasm32-unknown-unknown
-make test
-
-```
-
-For Aqua:
-```
-cd protocols/aqua
-npm install -g @go-task/cli
-task build
-cp target/wasm32-unknown-unknown/release/*.wasm ../../contracts/adapters/aqua/aqua_contracts/
-```
-
-## 2. Run Tests and Scout Audit
-```
-cd /workspace/contracts/
-make test
-```
-For Scout Audits (tool created by CoinFabrik), you should enter in each of the sub projects, for example
-```bash
-cd /workspace/contracts/aggregator
-cargo scout-audit
-```
-or, in the case you want to audit the Soroswap.Finance adapter (deprecated)
-```bash
-cd /workspace/contracts/adapters/soroswap
-cargo scout-audit
-```
-
-## 3.- Check CPU Instructios and Memory Usage
-```
-cd /workspace/contracts/aggregator
-cargo test budget -- --nocapture
-```
-Export it into a file that you will save together with your changes
-```
-cargo test budget -- --nocapture > aggregator_budget.txt
-```
-
-## 4.- Deployment
-
-### 4.1- (Optional) Deploy each protocol.
-We will consider other protocol addresses from your local ignored files `.soroban/mainnet.contrats.json` and `.soroban/testnet.contrats.json`.
-
-If you want to change their addresses do it there. Also sometimes projects do not keep a testnet version of their protocols. If you need to deploy your own Phoenix, Comet or Aqua version of the protocol, do:
-
-```
-cd /workspace
-yarn build
-yarn setup-phoenix testnet # To Setup Phoenix. Now you will have the new deployed addresses in .soroban/testnet.contrats.json
-
-```
-### 4.2 Deploy the Aggregator Aggregator
-
-To deploy the smart contracts you first would need to build the source with
-```bash
-cd /workspace/contracts
-make build
-```
-The .wasm files will already be optimized and will be available in 
-`/workspace/contracts/target/wasm32-unknown-unknown/release/` with a name like `[NAME-OF-CONTRACT].optimized.wasm`
-
-after the WASMs are built you can run this to deploy, networks can be `testnet`, `standalone`, `futurenet`, `mainnet`. The RPCs will be taken from the `configs.json` file.
+Supporting scripts:
 
 ```bash
-cd /workspace
-yarn build
-yarn deploy <network> # use testnet or mainnet
+bash scripts/quickstart.sh standalone   # or futurenet/testnet
+bash scripts/run.sh                     # enter the preview container
+bash scripts/deploySoroswap.sh testnet  # deploy the Soroswap submodule (optional)
+npm run publish_addresses testnet       # copy .soroban addresses into public/
 ```
 
-NOTE: For Testnet we will use the deployed addresse on the soroswap core repo, so make sure to pull the last version:
+## Audits
 
-```
-cd protocols/soroswap/
-git pull origin main
-```
+- [Runtime Verification audit report](./audits/2024-08-31_Soroswap_Aggregator_Audit_by_RuntimeVerification.pdf)
+- [Runtime Verification audit summary](./audits/2024-08-31_Soroswap_Aggregator_Audit_Summary_by_RuntimeVerification.pdf)
 
-when deployment is completed you can find the addresses in ./.soroban directory
+These reports cover the earlier aggregator release; review them together with the current contract
+code before a production deployment.
 
-## 6.- Run Tests directly on the Blockchain
-Run javascript tests
-```
-cd /workspace
-yarn test
-```
+## Security notes
 
+- The admin can replace adapters and pause or remove protocols; protect the admin key accordingly.
+- Never commit secret keys. `env_config.ts` does not print them, and errors should be reported by
+  public key only.
+- Swaps require authorization from the recipient (`to`), enforce per-swap deadlines, and check
+  aggregate output/input limits after all adapter calls.
+- Aqua routes require one 32-byte pool hash per hop in `bytes`; missing or mismatched hashes are
+  rejected.
+- Both swap entrypoints reject empty or single-token paths before dispatch.
 
-## 6.- Publish deployed address.
-If you want to publish the json files that are in the ignored `.soroban` folder, do:
+## License
 
-```bash
-yarn publish_addresses <network>
-```
-
-
-```
-## 7.- Integration Test in Public Testnet. 
-Its important to allways test contracts in a live testnet Blockchain.
-We have prepared some scripts to interact with the deployed Soroswap.Finance testnet version and with a custom deployed Phoenix protocol. This is because Phoenix does not officially support a testnet version.
-
-You can test the Aggregator methods by running the following command:
-```
-bash scripts/quickstart.sh standalone
-bash scripts/run.sh
-yarn test:manual <network>
-```
-## Development
-When deploying to any network other than mainnet the script will also deploy Phoenix Protocol for testing purposes
-
-**For development in standalone you should deploy soroswap smart contracts from the soroswap submodule, to do so there is a script you can run... You will need to set the .env inside the submodule**
-```bash
-bash scripts/deploySoroswap.sh <network>
-```
-
-### Add liquidity to the phoenix pools:
-If you want to create and add liquidity to the Phoenix pools, you can do so by running the following command:
-
-> [!IMPORTANT] 
-> The `TEST_TOKENS_ADMIN_SECRET_KEY` in your `.env` file must be identical to the one used for Soroswap deployment to successfully add liquidity to the pools in Phoenix.
-
-```bash
-yarn add-liquidity:phoenix <network> <number of tokens>*
-```
-This will create pairs with all tokens listed in the [Soroswap tokens list](https://github.com/soroswap/core/blob/main/public/tokens.json).
-
-> [!NOTE] 
-> *The number of tokens is optional, if not provided, the script will add liquidity to all the pools.
-
-### Add new protocol as submodule
-```bash
-git submodule add <remote_url> <destination_folder>
-```
-
-OLD
-
-
-## 5.- Publish Phoenix Aggregator in Mainnet
-```
-yarn build && yarn deploy-phoenix-adapter mainnet
+Apache License 2.0. See [LICENSE](./LICENSE).
