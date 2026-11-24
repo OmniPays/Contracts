@@ -84,12 +84,14 @@ contact a network. Live integration tests are manual and must be invoked explici
 
 ## Deployment (manual)
 
-`npm run deploy <network>` deploys the deployer and aggregator and registers the adapter addresses
-already present in the local address book. Supported network names are `mainnet`, `testnet`,
-`futurenet`, and `standalone`; RPC endpoints come from `configs.json` and `.env`. The Comet adapter
-is registered only when `comet_pair` is present in the address book. Adapter contracts must be
-deployed separately with `npm run deploy-{phoenix,aqua,comet}-adapter mainnet`; the Soroswap adapter
-uses the core router address.
+`npm run deploy <network>` deploys the deployer and aggregator and registers the configured DEX
+endpoints: the Soroswap router from the Core address book, the Aqua router from the Aqua address
+book, the Phoenix multihop from the Phoenix address book on mainnet (local address book otherwise),
+and Comet from the local address book when `comet_pair` is present. Supported network names are
+`mainnet`, `testnet`, `futurenet`, and `standalone`; RPC endpoints come from `configs.json` and
+`.env`. Adapter contracts must be deployed separately with
+`npm run deploy-{phoenix,aqua,comet}-adapter mainnet`; the Soroswap adapter uses the core router
+address.
 
 Deployment and live integration scripts submit real transactions. Check the target network and
 funded accounts before running them; `yarn`/`npm` build scripts do not deploy on their own.
