@@ -5,9 +5,9 @@ resolver = "2"
 [workspace.package]
 version = "2.0.0"
 edition = "2021"
-license = "GPL-3.0"
-repository = "https://github.com/soroswap/aggregator"
-homepage = "https://github.com/soroswap/aggregator"
+license = "Apache-2.0"
+repository = "https://github.com/OmniPays/Contracts"
+homepage = "https://github.com/OmniPays/Contracts"
 
 [workspace.dependencies]
 soroban-sdk = "22.0.7"
