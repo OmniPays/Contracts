@@ -106,8 +106,6 @@ export class EnvConfig {
 
     const allowHttp = network === "standalone";
 
-    console.log(admin)
-
     return new EnvConfig(
       new rpc.Server(rpc_url, { allowHttp }),
       new Horizon.Server(horizon_rpc_url, {allowHttp}),
