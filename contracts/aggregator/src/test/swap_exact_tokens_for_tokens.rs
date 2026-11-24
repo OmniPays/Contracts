@@ -214,7 +214,7 @@ fn swap_exact_tokens_for_tokens_negible_amount() {
 // }
 
 #[test]
-#[should_panic(expected = "HostError: Error(Contract, #503)")]
+#[should_panic(expected = "HostError: Error(Contract, #505)")]
 fn swap_exact_tokens_for_tokens_deadline_expired() {
     // creat the test
     let test = SoroswapAggregatorTest::setup();

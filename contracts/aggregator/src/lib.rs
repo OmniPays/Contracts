@@ -35,6 +35,14 @@ fn check_admin(e: &Env) -> Result<(), AggregatorError> {
     Ok(())
 }
 
+fn check_deadline(e: &Env, deadline: u64) -> Result<(), AggregatorError> {
+    if e.ledger().timestamp() >= deadline {
+        Err(AggregatorError::DeadlineExpired)
+    } else {
+        Ok(())
+    }
+}
+
 fn check_parameters(
     e: &Env,
     to: Address,
@@ -570,6 +578,7 @@ impl SoroswapAggregatorTrait for SoroswapAggregator {
         deadline: u64,
     ) -> Result<Vec<Vec<i128>>, AggregatorError> {
         extend_instance_ttl(&e);
+        check_deadline(&e, deadline)?;
         check_parameters(
             &e,
             to.clone(),
@@ -703,6 +712,7 @@ impl SoroswapAggregatorTrait for SoroswapAggregator {
         deadline: u64,
     ) -> Result<Vec<Vec<i128>>, AggregatorError> {
         extend_instance_ttl(&e);
+        check_deadline(&e, deadline)?;
         check_parameters(
             &e,
             to.clone(),
