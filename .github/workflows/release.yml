@@ -1,58 +1,90 @@
-name: Build contracts and release 
+name: Release
+
 on:
   workflow_dispatch:
     inputs:
+      network:
+        description: Network label for the release artifacts
+        required: true
+        default: testnet
+        type: choice
+        options:
+          - mainnet
+          - testnet
+          - futurenet
+          - standalone
       release_name:
-        description: 'Unique release name'
+        description: Release name or tag
         required: true
         type: string
+
 permissions:
-  contents: write
-  pull-requests: write 
-  repository-projects: write
-  packages: write
-defaults:
-  run:
-    working-directory: ./
+  contents: read
 
 jobs:
-  release-soroswap-aggregator:
-    uses: stellar-expert/soroban-build-workflow/.github/workflows/release.yml@main
-    with:
-      release_name: ${{ github.ref_name }}
-      release_description: 'Soroswap Aggregator contract release'
-      relative_path: './contracts/aggregator'
-      package: "soroswap-aggregator"
-      make_target: './Makefile'
-    secrets:
-      release_token: ${{ secrets.GITHUB_TOKEN }}
-  release-soroswap-aggregator-deployer:
-    uses: stellar-expert/soroban-build-workflow/.github/workflows/release.yml@main
-    with:
-      release_name: ${{ github.ref_name }}
-      release_description: 'Soroswap Aggregator contract release'
-      relative_path: './contracts/deployer'
-      package: "soroswap-aggregator-deployer"
-      make_target: './Makefile'
-    secrets:
-      release_token: ${{ secrets.GITHUB_TOKEN }}
-  release-soroswap-adapter:
-    uses: stellar-expert/soroban-build-workflow/.github/workflows/release.yml@main
-    with:
-      release_name: ${{ github.ref_name }}
-      release_description: 'Soroswap Aggregator contract release'
-      relative_path: './contracts/adapters/soroswap'
-      package: "soroswap-adapter"
-      make_target: './Makefile'
-    secrets:
-      release_token: ${{ secrets.GITHUB_TOKEN }}
-  release-phoenix-adapter:
-    uses: stellar-expert/soroban-build-workflow/.github/workflows/release.yml@main
-    with:
-      release_name: ${{ github.ref_name }}
-      release_description: 'Soroswap Aggregator contract release'
-      relative_path: './contracts/adapters/phoenix'
-      package: "phoenix-adapter"
-      make_target: './Makefile'
-    secrets:
-      release_token: ${{ secrets.GITHUB_TOKEN }}
+  contracts:
+    name: Build contracts
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: contracts
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - name: Build release WASM
+        env:
+          RELEASE_NAME: ${{ inputs.release_name }}
+          NETWORK: ${{ inputs.network }}
+        run: cargo build --release --target wasm32-unknown-unknown --workspace --locked
+      - uses: actions/upload-artifact@v4
+        with:
+          name: contracts-${{ inputs.release_name }}-${{ inputs.network }}
+          path: contracts/target/wasm32-unknown-unknown/release/*.wasm
+          if-no-files-found: error
+
+  tooling:
+    name: Build TypeScript tooling
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Enable Yarn
+        run: corepack enable
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile --ignore-scripts
+      - name: Build TypeScript
+        run: yarn build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tooling-${{ inputs.release_name }}-${{ inputs.network }}
+          path: dist/
+          if-no-files-found: error
+
+  adapters:
+    name: Check ${{ matrix.adapter }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: contracts
+    strategy:
+      matrix:
+        include:
+          - adapter: soroswap
+            package: soroswap-adapter
+          - adapter: phoenix
+            package: phoenix-adapter
+          - adapter: aqua
+            package: aqua-adapter
+          - adapter: comet
+            package: comet-adapter
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - name: Check ${{ matrix.adapter }} adapter
+        run: cargo check -p ${{ matrix.package }} --locked
