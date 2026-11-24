@@ -1,12 +1,17 @@
-NETWORK="$1"
+#!/usr/bin/env bash
 
-# Validate the input arguments
+set -euo pipefail
+
+NETWORK="${1:-}"
+
 if [ -z "$NETWORK" ]; then
     echo "Error: Network name must be provided."
-    echo "Usage: bash /workspace/scripts/deploy_random_tokens.sh <network> <number_of_tokens(optional)>"
+    echo "Usage: $0 <network>"
     exit 1
 fi
 
-cd protocols/soroswap/
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+cd "$SCRIPT_DIR/../protocols/soroswap"
+
 yarn
-yarn build && yarn deploy $NETWORK
+yarn build && yarn deploy "$NETWORK"

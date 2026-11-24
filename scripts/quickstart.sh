@@ -2,9 +2,10 @@
 
 previewHash=$(jq -r '.previewHash' configs.json)
 quickstartHash=$(jq -r '.quickstartHash' configs.json)
+protocolVersion=$(jq -r '.protocolVersion' configs.json)
 
 previewVersion=$(echo "$previewHash" | cut -d'@' -f1)
-echo $previewVersion
+echo "$previewVersion"
 
 set -e
 
@@ -37,7 +38,7 @@ echo "  "
 echo "  "
 
 echo "2. Searching for a previous soroban-preview docker container"
-containerID=$(docker ps --filter=`name=soroban-preview-${previewVersion}` --all --quiet)
+containerID=$(docker ps --filter="name=soroban-preview-${previewVersion}" --all --quiet)
 if [[ ${containerID} ]]; then
     echo "Start removing soroban-preview-${previewVersion}  container."
     docker rm --force soroban-preview-${previewVersion}
@@ -49,7 +50,7 @@ echo "  "
 echo "  "
 
 echo "3. Searching for a previous stellar container"
-containerID=$(docker ps --filter=`name=stellar` --all --quiet)
+containerID=$(docker ps --filter="name=stellar" --all --quiet)
 if [[ ${containerID} ]]; then
     echo "Start removing stellar container."
     docker rm --force stellar
@@ -64,7 +65,7 @@ echo "4. Run a soroban-preview-${previewVersion} container"
 
 currentDir=$(pwd)
 docker run -dti \
-  --volume ${currentDir}:/workspace \
+  --volume "${currentDir}:/workspace" \
   --name soroban-preview-${previewVersion} \
   -p 8001:8000 \
   --ipc=host \
@@ -83,6 +84,6 @@ docker run --rm -ti \
   stellar/quickstart:${quickstartHash} \
   $ARGS \
   --enable-soroban-rpc \
-  --protocol-version ${protocolVersion} \
+  --protocol-version "${protocolVersion}" \
   --enable-soroban-diagnostic-events \
   "$@" # Pass through args from the CLI

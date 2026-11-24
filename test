@@ -1,5 +1,6 @@
-cd contracts
-make build
-cd ..
-yarn deploy testnet
-yarn test testnet
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+npm run build
+npx tsc --noEmit

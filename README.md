@@ -78,8 +78,9 @@ npm run build
 npx tsc --noEmit
 ```
 
-`./test` and `./test.sh` only run local Rust/TypeScript checks; they never deploy or contact a
-network. Live integration tests are manual and must be invoked explicitly with `npm run test:manual`.
+`./test` and `./test.sh` only run a local TypeScript build and typecheck; they never deploy or
+contact a network. Live integration tests are manual and must be invoked explicitly with
+`npm run test:manual`.
 
 ## Deployment (manual)
 
