@@ -454,7 +454,7 @@ impl<'a> SoroswapAggregatorTest<'a> {
 // pub mod events;
 pub mod get_adapters;
 pub mod initialize;
-// pub mod remove_adapter;
+pub mod remove_adapter;
 pub mod set_pause_get_paused;
 pub mod swap_exact_tokens_for_tokens;
 pub mod swap_tokens_for_exact_tokens;

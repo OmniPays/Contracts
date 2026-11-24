@@ -59,14 +59,16 @@ pub fn get_adapter(e: &Env, protocol_id: Protocol) -> Result<Adapter, Aggregator
     }
 }
 
-// TODO, THIS SHOULD FAIL IF PROXY DOES NOT EXIST
-pub fn remove_adapter(e: &Env, protocol_id: Protocol) {
-    if has_adapter(e, protocol_id.clone()) {
-        e.storage()
-            .instance()
-            .remove(&DataKey::Adapter(protocol_id.clone()));
-        remove_protocol_id(e, protocol_id);
+pub fn remove_adapter(e: &Env, protocol_id: Protocol) -> Result<(), AggregatorError> {
+    if !has_adapter(e, protocol_id.clone()) {
+        return Err(AggregatorError::ProtocolNotFound);
     }
+
+    e.storage()
+        .instance()
+        .remove(&DataKey::Adapter(protocol_id.clone()));
+    remove_protocol_id(e, protocol_id);
+    Ok(())
 }
 
 pub fn add_protocol_id(e: &Env, protocol_id: Protocol) {

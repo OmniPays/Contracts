@@ -468,7 +468,7 @@ impl SoroswapAggregatorTrait for SoroswapAggregator {
     fn remove_adapter(e: Env, protocol_id: Protocol) -> Result<(), AggregatorError> {
         check_admin(&e)?;
 
-        remove_adapter(&e, protocol_id.clone());
+        remove_adapter(&e, protocol_id.clone())?;
 
         event::protocol_removed(&e, protocol_id);
         extend_instance_ttl(&e);
